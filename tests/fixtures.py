@@ -8,6 +8,7 @@ from smb.SMBConnection import SMBConnection
 
 import pytest
 
+
 def data_path(filename):
     return os.path.join(os.path.dirname(__file__), 'data', filename)
 

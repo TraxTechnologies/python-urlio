@@ -15,10 +15,12 @@ from urlio.path import (
     PathFactory, SMBPath, LocalPath, smb_dirname, getBIOSName, OperationFailure
 )
 
+
 from .fixtures import data_path
 import pytest
 
 BASE = '\\\\filex.com\\it\\stg\\static_tests'
+
 
 if 'SMBUSER' in os.environ:
     path.SMB_USER = os.environ['SMBUSER']
@@ -78,7 +80,7 @@ def mock_find_dfs_share(path, api=None):
 
 def test_find_dfs_share_a():
     rslt = find_dfs_share('\\\\filex.com\\Comm')
-    assert rslt == ('fxs02fs0100', 'Comm', 'filex.com', '')
+    assert rslt == ('FXB05FS0300', 'Comm', 'filex.com', '')
 
 def test_find_dfs_share_b():
     try:
@@ -90,7 +92,7 @@ def test_find_dfs_share_b():
 
 def test_find_dfs_share_c():
     rslt = find_dfs_share('\\\\Filex.com\\Comm')
-    assert rslt == ('fxs02fs0100', 'Comm', 'filex.com', '')
+    assert rslt == ('FXB05FS0300', 'Comm', 'filex.com', '')
 
 def test_find_dfs_share_d():
     rslt = find_dfs_share('\\\\Filex.com\\Comm', case_sensative=True)
@@ -106,7 +108,7 @@ def test_find_dfs_share_d():
 
 def test_find_dfs_share_e():
     rslt = find_dfs_share('\\\\Filex.com\\Comm\\Foo', case_sensative=True)
-    assert rslt == ('fxs02fs0100', 'Comm', 'filex.com', 'Foo'), rslt
+    assert rslt == ('FXB05FS0300', 'Comm', 'filex.com', 'Foo'), rslt
 
 def test_find_dfs_share_f():
     rslt = find_dfs_share('\\\\FXESB01.Filex.com\\Comm\\Foo', case_sensative=True)
@@ -160,11 +162,14 @@ def test_pysmb_smbpath1():
     assert p.share == 'filerouter_stage'
     assert p.relpath == 'foo\\bar', "{}".format(p.relpath)
 
-@pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
-def test_smbpath2():
+# @pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
+def test_smbpath2(request):
     """
     List files in an smb directory
     """
+    if not request.config.getoption("--network"):
+        pytest.skip("--network was not specifified")
+
     p = SMBPath(
         "{0}\\{1}".format(BASE, 'test_smbpath2'),
         find_dfs_share=mock_find_dfs_share
@@ -176,9 +181,11 @@ def test_smbpath2():
     files = [i.path for i in p.files()]
     assert expect == files, "expect={} files={}".format(expect, files)
 
+# @pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
+def test_path3(request):
+    if not request.config.getoption("--network"):
+        pytest.skip("--network was not specifified")
 
-@pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
-def test_path3():
     path = SMBPath(
         "{0}\\{1}".format(BASE, "test_smbpath3\\test_file"),
         find_dfs_share=mock_find_dfs_share
@@ -242,8 +249,11 @@ def test_smbpath_basename1():
     ).basename == '\\'
 
 
-@pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
-def test_smbpath_exists():
+# @pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
+def test_smbpath_exists(request):
+    if not request.config.getoption("--network"):
+        pytest.skip("--network was not specifified")
+
     BASE = '\\\\filex.com\\it\\stg\\static_tests'
     path = SMBPath(
         "{0}\\{1}".format(BASE, "test_smbexists1\\test_file"),
@@ -277,8 +287,11 @@ def test_local_path_files():
         os.rmdir('/tmp/test_local_path_files')
 
 
-@pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
-def test_smb_remove():
+# @pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
+def test_smb_remove(request):
+    if not request.config.getoption("--network"):
+        pytest.skip("--network was not specifified")
+
     p = SMBPath(
         "{0}\\{1}".format(BASE, 'test_smb_remove\\testfile'),
         mode='w',
@@ -297,11 +310,14 @@ def test_smb_remove():
     )
     assert not p.exists()
 
-@pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
-def test_smb_mkdirs():
+# @pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
+def test_smb_mkdirs(request):
     """
     SMBPath.makedirs
     """
+    if not request.config.getoption("--network"):
+        pytest.skip("--network was not specifified")
+
     p = SMBPath(
         "{0}\\{1}".format(BASE, 'test_smb_mkdirs\\foo\\bar'),
         mode='w',
@@ -335,11 +351,14 @@ def test_smb_mkdirs():
     if p.exists():
         p.remove()
 
-@pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
-def test_ls_glob():
+# @pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
+def test_ls_glob(request):
     """
     List directory contents and filter on glob
     """
+    if not request.config.getoption("--network"):
+        pytest.skip("--network was not specifified")
+
     p = SMBPath(
         "{0}\\{1}".format(BASE, 'test_ls_names'),
         mode='r',
@@ -354,11 +373,14 @@ def test_ls_glob():
             "{}\\{}\\{}".format(BASE, 'test_ls_names', 'defg'),
         ]
 
-@pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
-def test_read():
+# @pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
+def test_read(request):
     """
     test pysmb read
     """
+    if not request.config.getoption("--network"):
+        pytest.skip("--network was not specifified")
+
     p = SMBPath(
         "{}\\{}\\{}".format(BASE, 'test_smbc_read', 'test.txt'),
         mode='r',
@@ -374,8 +396,11 @@ def test_read():
     assert index == 9, index
     assert a == b'test', a
 
-@pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
-def test_size():
+# @pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
+def test_size(request):
+    if not request.config.getoption("--network"):
+        pytest.skip("--network was not specifified")
+
     p = SMBPath(
         "{}\\{}\\{}".format(BASE, 'test_smbc_read', 'test.txt'),
         mode='r',
@@ -383,8 +408,11 @@ def test_size():
     )
     assert p.size == 10, p.size
 
-@pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
+# @pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
 def test_mtime():
+    if not request.config.getoption("--network"):
+        pytest.skip("--network was not specifified")
+
     p = SMBPath(
         "{}\\{}\\{}".format(BASE, 'test_smbc_read', 'test.txt'),
         mode='r',
@@ -397,9 +425,11 @@ def test_mtime():
         p.mtime == expect
     ), (p.mtime, expect)
 
+# @pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
+def test_atime(request):
+    if not request.config.getoption("--network"):
+        pytest.skip("--network was not specifified")
 
-@pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
-def test_atime():
     utcnow = datetime.datetime.utcnow()
     p = SMBPath(
         "{}\\{}\\{}".format(BASE, 'test_smbc_read', 'test.txt'),
@@ -414,15 +444,21 @@ def test_atime():
     assert p.atime.day == utcnow.day
     assert p.atime.hour == utcnow.hour
 
-@pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
-def test_stat_2003():
+# @pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
+def test_stat_2003(request):
+    if not request.config.getoption("--network"):
+        pytest.skip("--network was not specifified")
+
     utcnow = datetime.datetime.utcnow()
     p = Path(r'\\fxb02fs0300.filex.com\Filerouter test\stat_test\test.txt')
     stat = p.stat()
     assert stat['atime'] == datetime.datetime(2017, 5, 7, 8, 18, 21, 843810), stat['atime']
 
-@pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
-def test_chunk_write_2003():
+# @pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
+def test_chunk_write_2003(request):
+    if not request.config.getoption("--network"):
+        pytest.skip("--network was not specifified")
+
     fpath = r'\\fxb02fs0300.filex.com\Filerouter Test\chunk_write\test.txt'
     p = Path(fpath, 'w')
     p.write(b'foo')
@@ -431,8 +467,11 @@ def test_chunk_write_2003():
     rslt = p.read()
     assert rslt == b'foobar', rslt
 
-@pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
-def test_chunk_write_2008():
+# @pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
+def test_chunk_write_2008(request):
+    if not request.config.getoption("--network"):
+        pytest.skip("--network was not specifified")
+
     p = SMBPath(
         "{}\\{}\\{}".format(BASE, 'test_chunk_write', 'test.txt'),
         mode='w',
@@ -464,14 +503,20 @@ RECURSE_VALS = [
     '\\\\filex.com\\it\\stg\\static_tests\\test_recurse\\sub3\\dubsub1\\doc2.txt',
 ]
 
-@pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
-def test_recurse():
+# @pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
+def test_recurse(request):
+    if not request.config.getoption("--network"):
+        pytest.skip("--network was not specifified")
+
     p = Path(r'\\filex.com\it\stg\static_tests\test_recurse')
     result = list(p.recurse())
     assert result == RECURSE_VALS, result
 
-@pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
-def test_recurse_offset():
+# @pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
+def test_recurse_offset(request):
+    if not request.config.getoption("--network"):
+        pytest.skip("--network was not specifified")
+
     p = Path(r'\\filex.com\it\stg\static_tests\test_recurse')
     result = list(p.recurse(offset=2))
     assert result == RECURSE_VALS[2:], result
@@ -489,29 +534,42 @@ RECURSE_FILES_VALS = [
     '\\\\filex.com\\it\\stg\\static_tests\\test_recurse\\sub3\\dubsub1\\doc2.txt',
 ]
 
-@pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
-def test_recurse_files():
+# @pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
+def test_recurse_files(request):
+    if not request.config.getoption("--network"):
+        pytest.skip("--network was not specifified")
+
     p = Path(r'\\filex.com\it\stg\static_tests\test_recurse')
     result = list(p.recurse_files())
     assert result == RECURSE_FILES_VALS, result
 
-@pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
-def test_list_empty():
+# @pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
+def test_list_empty(request):
+    if not request.config.getoption("--network"):
+        pytest.skip("--network was not specifified")
+
     p = Path(r'\\filex.com\it\stg\static_tests\empty')
     l = list(p.ls())
     assert not l
 
+# @pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
+def test_list_files_empty(request):
+    if not request.config.getoption("--network"):
+        pytest.skip("--network was not specifified")
 
-@pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
-def test_list_files_empty():
     p = Path(r'\\fxb02fs0300.filex.com\Filerouter Test\static_test\empty')
     #p = Path(r'\\filex.com\it\stg\static_tests\empty')
     l = list(p.filenames())
 #    assert not l
 
-@pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
-@pytest.mark.skipif(not pytest.config.getvalue('slow'), reason='--slow was not specifified')
-def test_large_file_2003():
+# @pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
+# @pytest.mark.skipif(not pytest.config.getvalue('slow'), reason='--slow was not specifified')
+def test_large_file_2003(request):
+    if not request.config.getoption("--network"):
+        pytest.skip("--network was not specifified")
+    if not request.config.getoption("--slow"):
+        pytest.skip("--slow was not specifified")
+
     p = Path(r'\\fxb02fs0300.filex.com\Filerouter Test\large_file.txt', 'w')
     if p.exists():
         p.remove()
