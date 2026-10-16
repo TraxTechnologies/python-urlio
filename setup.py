@@ -56,14 +56,14 @@ class TestCmd(TestCommand):
 
 setup(
     name='urlio',
-    version='0.6.0',
+    version='0.6.6',
     description='Filesystem like access to urls',
     classifiers=[
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3.4",
     ],
     author='Trax Technologies, Inc',
-    author_email='devops@traxtech.com',
+    author_email='team.cherry@traxtech.com',
     url='https://github.com/TraxTechnologies/python-urlio',
     packages=['urlio'],
     install_requires=[
