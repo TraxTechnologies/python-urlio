@@ -1,3 +1,60 @@
+python-urlio (0.6.6) jessie; urgency=medium
+
+  [ Jenkins ]
+  * Build #13. Started by user traxtech.service.
+
+  [ rbaduel ]
+  * testing sets for ttsm4 enablement
+  * fixed missing fileserver
+  * introduced smb timeout pooling, fixed conn issue
+  * Revert local changes so it wont affect CI/CD
+  * reverting py3 version in tox
+
+  [ biboi ]
+  * Merge pull request #15 from TraxTechnologies/fileprofile/bugfix
+
+  [ rbaduel ]
+  * we need to force match CI/CD for now
+
+  [ Badz ]
+  * Merge pull request #16 from TraxTechnologies/fileprofile/bugfix
+
+  [ rbaduel ]
+  * build fixes
+  * clean newline
+
+  [ Badz ]
+  * Merge pull request #17 from TraxTechnologies/fileprofile/bugfix
+
+  [ rbaduel ]
+  * failed requirements in ci/cd, fixed them now
+
+  [ Archie B. ]
+  * Merge pull request #18 from TraxTechnologies/fileprofile/bugfix
+
+  [ rbaduel ]
+  * updated ts files due to fileserver movement
+
+  [ Badz ]
+  * Merge pull request #19 from TraxTechnologies/fileprofile/bugfix
+
+  [ rbaduel ]
+  * fixed timestamp issue
+
+  [ Badz ]
+  * Merge pull request #20 from TraxTechnologies/fileprofile/bugfix
+
+  [ rbaduel ]
+  * updating package builder
+
+  [ Badz ]
+  * Merge pull request #21 from TraxTechnologies/fileprofile/bugfix
+
+  [ Archie B. ]
+  * Merge pull request #22 from TraxTechnologies/master
+
+ -- Jenkins <devops@traxtech.com>  Fri, 16 Oct 2026 19:15:15 +0000
+
 python-urlio (0.6.5) jessie; urgency=medium
 
   [ Jenkins ]
