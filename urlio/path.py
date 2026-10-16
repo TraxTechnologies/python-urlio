@@ -24,12 +24,14 @@ import multiprocessing
 
 from smb.SMBConnection import SMBConnection
 from smb.SMBConnection import OperationFailure
+from smb.base import SMBTimeout, NotConnectedError as SMBNotConnectedError
 from smb.smb_constants import *
 from smb.smb2_constants import *
 import threading
 import logging
 import repoze.lru
 from .smb_ext import iter_listPath, listPath, storeFileFromOffset
+from .smb_timeout import SMBTimeoutError, map_pysmb_timeout
 from .dfs import default_find_dfs_share as find_dfs_share
 from .base import BasicIO
 log = logging.getLogger(__name__)
@@ -44,6 +46,7 @@ SMB_IGNORE_FILENAMES = (
 )
 SMB_USER = os.environ.get('SMBUSER', None)
 SMB_PASS = os.environ.get('SMBPASS', None)
+SMB_DEFAULT_TIMEOUT = int(os.environ.get('URLIO_SMB_TIMEOUT', '120'))
 if sys.version_info <= (3,):
     EDIDET = re.compile('^.{0,3}ISA.*', re.MULTILINE|re.DOTALL)
     EDIFACTDET = re.compile('^.{0,3}UN(A|B).*', re.MULTILINE|re.DOTALL)
@@ -80,6 +83,9 @@ class TraxCommonException(Exception):
 
 class FindDfsShare(Exception):
     "Raised when dfs share is not mapped"
+
+
+SMB_IO_ERRORS = (SMBTimeoutError, SMBTimeout, SMBNotConnectedError, socket.error)
 
 
 def normalize_path(path):
@@ -462,6 +468,8 @@ def get_smb_connection(
         str(user), str(pas), str(client), str(server_name), domain=str(domain), is_direct_tcp=is_direct_tcp
     )
     conn.connect(server_ip, port, timeout=timeout)
+    if conn.sock:
+        conn.sock.settimeout(timeout)
     return conn
 
 
@@ -520,7 +528,7 @@ class SMBPath(BasePath):
     def __init__(
             self, path, mode='r', user=None, password=None, api=None,
             clientname=CLIENTNAME, find_dfs_share=find_dfs_share, write_lock=None,
-            timeout=120, _attrs=None,
+            timeout=None, _attrs=None,
             ):
         #if type(path) == str:
         #    path = path.decode('utf-8')
@@ -534,6 +542,8 @@ class SMBPath(BasePath):
         self.user = user or SMB_USER
         self.password = password or SMB_PASS
         self.clientname = clientname
+        if timeout is None:
+            timeout = SMB_DEFAULT_TIMEOUT
         self.timeout = timeout
         self._index = 0
         self.mode = mode
@@ -566,9 +576,13 @@ class SMBPath(BasePath):
         if conn is None:
             conn = self.get_connection()
         fp = io.BytesIO()
-        conn.retrieveFileFromOffset(
-            self.share, self.relpath, fp, self._index, size
-        )
+        try:
+            conn.retrieveFileFromOffset(
+                self.share, self.relpath, fp, self._index, size,
+                timeout=self.timeout,
+            )
+        except SMB_IO_ERRORS as exc:
+            self._handle_smb_io_error(exc)
         self._index = self._index + fp.tell()
         fp.seek(0)
         return fp.read()
@@ -606,12 +620,29 @@ class SMBPath(BasePath):
             self._conn.timestamp = time.time()
         return self._conn
 
+    def _invalidate_connection(self):
+        conn = self._conn
+        self._conn = None
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+    def _handle_smb_io_error(self, exc):
+        self._invalidate_connection()
+        raise map_pysmb_timeout(exc)
+
     def exists(self, relpath=None):
-        conn = self.get_connection()
         try:
-            stat = conn.getAttributes(self.share, self.relpath)
+            conn = self.get_connection()
+            stat = conn.getAttributes(
+                self.share, self.relpath, timeout=self.timeout
+            )
         except OperationFailure:
             return False
+        except SMB_IO_ERRORS as exc:
+            self._handle_smb_io_error(exc)
         return stat != None
 
     def makedirs(self, relpath=None, is_dir=False, exist_ok=False):
@@ -649,7 +680,13 @@ class SMBPath(BasePath):
             self.WRITELOCK.acquire(self.server_name, self.share, self.relpath)
         try:
             conn = self.get_connection()
-            storeFileFromOffset(conn, self.share, self.relpath, fp, offset=self._index, timeout=self.timeout)
+            try:
+                storeFileFromOffset(
+                    conn, self.share, self.relpath, fp, offset=self._index,
+                    timeout=self.timeout,
+                )
+            except SMB_IO_ERRORS as exc:
+                self._handle_smb_io_error(exc)
             fp.seek(0)
             self._index = self._index + len(fp.read())
         finally:
@@ -719,41 +756,45 @@ class SMBPath(BasePath):
         """
         List a directory and return the names of the files and directories.
         """
-        conn = self.get_connection()
-        paths = []
         if not return_files and not return_dirs:
             raise Exception("At lest one return_files or return_dirs must be true")
-        paths = iter_listPath(
-            conn,
-            self.share,
-            self.relpath,
-            pattern=glob,
-            limit=0,
-            timeout=self.timeout,
-            begin_at=0,
-            ignore=self.ignore_filenames,
-        )
-        for a in paths:
-            _at += 1
-            if _at < offset:
-                continue
-            if limit > 0 and _done >= limit:
-                raise StopIteration
-            if a.isDirectory:
-                p = self.join(a.filename, _attrs=a)
-                if return_dirs:
-                    yield p
-                    _done += 1
-                if recurse:
-                    for _ in p.ls(glob, limit, offset, recurse, return_files,
-                        return_dirs, _done, _at):
-                        yield _
+        try:
+            conn = self.get_connection()
+            paths = iter_listPath(
+                conn,
+                self.share,
+                self.relpath,
+                pattern=glob,
+                limit=0,
+                timeout=self.timeout,
+                begin_at=0,
+                ignore=self.ignore_filenames,
+            )
+            for a in paths:
+                _at += 1
+                if _at < offset:
+                    continue
+                if limit > 0 and _done >= limit:
+                    raise StopIteration
+                if a.isDirectory:
+                    p = self.join(a.filename, _attrs=a)
+                    if return_dirs:
+                        yield p
                         _done += 1
-            elif return_files:
-                yield SMBPath(self.path).join(
-                    a.filename, _attrs=a
-                )
-                _done += 1
+                    if recurse:
+                        for _ in p.ls(
+                                glob, limit, offset, recurse, return_files,
+                                return_dirs, _done, _at,
+                            ):
+                            yield _
+                            _done += 1
+                elif return_files:
+                    yield SMBPath(self.path).join(
+                        a.filename, _attrs=a
+                    )
+                    _done += 1
+        except SMB_IO_ERRORS as exc:
+            self._handle_smb_io_error(exc)
 
     def recurse_files(self, glob='*', limit=0, offset=0):
         return self.filenames(
@@ -802,8 +843,13 @@ class SMBPath(BasePath):
     @property
     def _attrs(self):
         if not self.__attrs:
-            conn = self.get_connection()
-            self.__attrs = conn.getAttributes(self.share, self.relpath)
+            try:
+                conn = self.get_connection()
+                self.__attrs = conn.getAttributes(
+                    self.share, self.relpath, timeout=self.timeout,
+                )
+            except SMB_IO_ERRORS as exc:
+                self._handle_smb_io_error(exc)
         return self.__attrs
 
     @_attrs.setter
@@ -856,6 +902,7 @@ class SMBPath(BasePath):
         return smb_basename(self.relpath)
 
     def join(self, *joins, **kwargs):
+        kwargs.setdefault('timeout', self.timeout)
         p = self
         for joinname in joins:
             p = SMBPath(p.static_join(p.path, joinname), **kwargs)

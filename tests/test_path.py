@@ -78,7 +78,7 @@ def mock_find_dfs_share(path, api=None):
 
 def test_find_dfs_share_a():
     rslt = find_dfs_share('\\\\filex.com\\Comm')
-    assert rslt == ('fxs02fs0100', 'Comm', 'filex.com', '')
+    assert rslt == ('FXB05FS0300', 'Comm', 'filex.com', '')
 
 def test_find_dfs_share_b():
     try:
@@ -90,7 +90,7 @@ def test_find_dfs_share_b():
 
 def test_find_dfs_share_c():
     rslt = find_dfs_share('\\\\Filex.com\\Comm')
-    assert rslt == ('fxs02fs0100', 'Comm', 'filex.com', '')
+    assert rslt == ('FXB05FS0300', 'Comm', 'filex.com', '')
 
 def test_find_dfs_share_d():
     rslt = find_dfs_share('\\\\Filex.com\\Comm', case_sensative=True)
@@ -106,7 +106,7 @@ def test_find_dfs_share_d():
 
 def test_find_dfs_share_e():
     rslt = find_dfs_share('\\\\Filex.com\\Comm\\Foo', case_sensative=True)
-    assert rslt == ('fxs02fs0100', 'Comm', 'filex.com', 'Foo'), rslt
+    assert rslt == ('FXB05FS0300', 'Comm', 'filex.com', 'Foo'), rslt
 
 def test_find_dfs_share_f():
     rslt = find_dfs_share('\\\\FXESB01.Filex.com\\Comm\\Foo', case_sensative=True)
