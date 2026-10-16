@@ -1,5 +1,5 @@
 Source: python-urlio
-Maintainer: Trax DevOps <devops@traxtech.com>
+Maintainer: Team CHERRY <team.cherry@traxtech.com>
 Section: python
 Priority: optional
 Build-Depends: python, debhelper (>= 9), python3, dh-python,
