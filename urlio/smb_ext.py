@@ -10,6 +10,9 @@ from collections import deque
 from smb.smb_structs import *
 from smb.smb2_structs import *
 import binascii
+import time
+
+from .smb_timeout import wait_while_busy
 
 DFLTSEARCH = (
     SMB_FILE_ATTRIBUTE_READONLY |
@@ -35,6 +38,8 @@ def listPath(conn, service_name, path,
     :param integer search: integer value made up from a bitwise-OR of *SMB_FILE_ATTRIBUTE_xxx* bits (see smb_constants.py).
                            The default *search* value will query for all read-only, hidden, system, archive files and directories.
     :param string/unicode pattern: the filter to apply to the results before returning to the client.
+    :param timeout: Seconds without SMB traffic before raising
+        :class:`urlio.smb_timeout.SMBTimeoutError` (stall limit for this listing).
     :return: A list of :doc:`smb.base.SharedFile<smb_SharedFile>` instances.
     """
     if not conn.sock:
@@ -64,8 +69,7 @@ def listPath(conn, service_name, path,
                 pattern = pattern, timeout = timeout, limit=limit,
                 begin_at=begin_at, ignore=ignore
             )
-        while conn.is_busy:
-            conn._pollForNetBIOSPacket(timeout)
+        wait_while_busy(conn, timeout, progress_marker=lambda: len(results))
     finally:
         conn.is_busy = False
 
@@ -93,8 +97,7 @@ def getDfsReferral(conn, service_name, path, timeout = 30):
             _getDfsReferral_SMB2(conn, service_name, path, cb, eb, timeout = timeout)
         else:
             _getDfsReferral_SMB1(conn, service_name, path, cb, eb, timeout = timeout)
-        while conn.is_busy:
-            conn._pollForNetBIOSPacket(timeout)
+        wait_while_busy(conn, timeout, progress_marker=lambda: len(results))
     finally:
         conn.is_busy = False
 
@@ -467,8 +470,9 @@ def storeFileFromOffset(conn, service_name, path, file_obj, offset = 0, timeout 
             _storeFileFromOffset_SMB2(conn, service_name, path, file_obj, cb, eb, offset, timeout = timeout, overwrite = overwrite)
         else:
             _storeFileFromOffset_SMB1(conn, service_name, path, file_obj, cb, eb, offset, timeout = timeout, overwrite = overwrite)
-        while conn.is_busy:
-            conn._pollForNetBIOSPacket(timeout * 1000)
+        wait_while_busy(
+            conn, timeout, progress_marker=lambda: len(results)
+        )
     finally:
         conn.is_busy = False
 
@@ -656,12 +660,13 @@ def iter_listPath(conn, service_name, path,
     :param integer search: integer value made up from a bitwise-OR of *SMB_FILE_ATTRIBUTE_xxx* bits (see smb_constants.py).
                            The default *search* value will query for all read-only, hidden, system, archive files and directories.
     :param string/unicode pattern: the filter to apply to the results before returning to the client.
+    :param timeout: Seconds without SMB traffic before raising
+        :class:`urlio.smb_timeout.SMBTimeoutError` (stall limit for this listing).
     :return: A list of :doc:`smb.base.SharedFile<smb_SharedFile>` instances.
     """
     if not conn.sock:
         raise NotConnectedError('Not connected to server')
 
-    results = [ ]
     results = Results()
 
     def cb(entries):
@@ -687,7 +692,10 @@ def iter_listPath(conn, service_name, path,
                 begin_at=begin_at, ignore=ignore,
             )
         while conn.is_busy:
-            conn._pollForNetBIOSPacket(timeout)
+            wait_while_busy(
+                conn, timeout,
+                progress_marker=lambda: (len(results), results.at),
+            )
             while True:
                 try:
                     yield results.popleft()
