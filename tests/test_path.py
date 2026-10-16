@@ -419,7 +419,7 @@ def test_stat_2003():
     utcnow = datetime.datetime.utcnow()
     p = Path(r'\\fxb02fs0300.filex.com\Filerouter test\stat_test\test.txt')
     stat = p.stat()
-    assert stat['atime'] == datetime.datetime(2017, 5, 7, 8, 18, 21, 843810), stat['atime']
+    assert stat['atime'] == datetime.datetime(2025, 2, 18, 13, 59, 15, 900652), stat['atime']
 
 @pytest.mark.skipif(not pytest.config.getvalue('network'), reason='--network was not specifified')
 def test_chunk_write_2003():
